@@ -1,0 +1,10 @@
+{
+  "name": "radar-visualizer",
+  "version": "0.1.0",
+  "description": "Simple animated visualization of radar pulse emissions between an emitter and a sensor.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes serve -l 5173 ."
+  }
+}

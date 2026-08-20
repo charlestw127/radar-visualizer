@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radar Emission Visualizer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Radar Emission Visualizer</h1>
+    <div class="style-switch" role="radiogroup" aria-label="Animation style">
+      <label><input type="radio" name="style" value="wave" checked /> <span>Sine wave</span></label>
+      <label><input type="radio" name="style" value="ring" /> <span>Ring pulses</span></label>
+    </div>
+    <div class="actions">
+      <button id="btn-pause" type="button" title="Space">Pause</button>
+      <button id="btn-reset" type="button" title="R">Reset</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage">
+      <canvas id="scene" aria-label="Radar emission animation"></canvas>
+    </section>
+
+    <aside class="panel">
+      <h2>Waveform</h2>
+      <div id="controls"></div>
+
+      <h2>Derived</h2>
+      <dl id="readouts" class="readouts"></dl>
+
+      <p class="hint">
+        Keys: <kbd>Space</kbd> pause · <kbd>1</kbd>/<kbd>2</kbd> switch style · <kbd>R</kbd> reset
+      </p>
+    </aside>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

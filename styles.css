@@ -1,0 +1,162 @@
+:root {
+  --bg: #0b0f14;
+  --panel: #121820;
+  --panel-border: #1f2a36;
+  --text: #d7e1ea;
+  --muted: #7f91a3;
+  --accent: #3ee6a8;
+  --accent-2: #ffb454;
+  --danger: #ff5c7a;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel);
+}
+
+.topbar h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+  flex: 1;
+}
+
+.style-switch {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 0.2rem;
+}
+
+.style-switch label {
+  cursor: pointer;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.style-switch input { display: none; }
+.style-switch input:checked + span { color: var(--bg); }
+.style-switch label:has(input:checked) { background: var(--accent); }
+
+.actions { display: flex; gap: 0.5rem; }
+
+button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  min-height: 0;
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  border-left: 1px solid var(--panel-border);
+  background: var(--panel);
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.panel h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 0 0 0.75rem;
+}
+.panel h2 + .readouts, .panel h2 ~ h2 { margin-top: 1.5rem; }
+
+.control {
+  margin-bottom: 1rem;
+}
+
+.control .label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.control .value {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.control input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.readouts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 1rem;
+  font-size: 0.85rem;
+}
+.readouts dt { color: var(--muted); }
+.readouts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.hint {
+  margin-top: 1.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+kbd {
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .panel { border-left: none; border-top: 1px solid var(--panel-border); }
+}
