@@ -13,6 +13,12 @@
  * The spectrum is analytic, computed from the live waveform parameters (it is
  * a property of what the emitter is transmitting now). The noise floor is
  * cosmetic, and the trace brightens with the sensor's live illumination.
+ *
+ * With a moving sensor the received spectrum is shifted by the one-way
+ * Doppler (layout.dopplerHz) and lowered by the 1/R² path loss relative to
+ * closest approach (layout.pathGainDb). Doppler is tiny against a short
+ * pulse's bandwidth — which is the honest picture: you need long pulses or a
+ * high carrier to see it on a single-pulse spectrum.
  */
 import { fmtFrequencyHz, fmtFrequencyMHz } from './params.js';
 
@@ -20,7 +26,7 @@ const DB_FLOOR = -60;
 const LOBES = 4;            // span = ±LOBES/τ around the carrier
 const NOISE_DB = -52;
 const MIN_LINE_PX = 3;      // PRF lines closer than this are "unresolved"
-const PAD = { left: 30, right: 8, top: 20, bottom: 32 };
+const PAD = { left: 30, right: 8, top: 20, bottom: 44 };
 
 export class SpectrumView {
   /** @param {HTMLCanvasElement} canvas */
@@ -48,8 +54,9 @@ export class SpectrumView {
   /**
    * @param {import('./params.js').Params} params
    * @param {import('./simulation.js').Simulation} sim
+   * @param {object} layout current scene layout (for dopplerHz / pathGainDb / orbit)
    */
-  draw(params, sim) {
+  draw(params, sim, layout) {
     const { ctx, w, h } = this;
     if (!w || !h) return;
 
@@ -58,6 +65,9 @@ export class SpectrumView {
     const fc = params.get('frequency');     // MHz
     const prf = 1 / pri;                    // MHz
     const span = (2 * LOBES) / tau;         // MHz, total width shown
+    const fd = (layout?.dopplerHz ?? 0) / 1e6;   // MHz, received-carrier shift
+    const gainDb = layout?.pathGainDb ?? 0;      // ≤ 0, path loss vs closest approach
+    const moving = !!layout?.orbit;
 
     const plot = {
       x: PAD.left, y: PAD.top,
@@ -66,10 +76,11 @@ export class SpectrumView {
     const cols = Math.max(1, Math.floor(plot.w));
     const dbToY = (db) => plot.y + (db / DB_FLOOR) * plot.h;
     const offToX = (fMHz) => plot.x + (fMHz / span + 0.5) * plot.w;
+    // Received spectrum: sinc² centred on fc + fd, lowered by path loss.
     const envDb = (fMHz) => {
-      const x = Math.PI * fMHz * tau;
+      const x = Math.PI * (fMHz - fd) * tau;
       const s = x === 0 ? 1 : Math.sin(x) / x;
-      return Math.max(DB_FLOOR, 20 * Math.log10(Math.abs(s) + 1e-9));
+      return Math.max(DB_FLOOR, gainDb + 20 * Math.log10(Math.abs(s) + 1e-9));
     };
 
     // Cosmetic noise floor: per-column values that drift, frozen when paused.
@@ -130,12 +141,13 @@ export class SpectrumView {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      const K = Math.floor(span / 2 / prf);
+      const K = Math.floor(span / 2 / prf) + 1;
       ctx.strokeStyle = `rgba(62,230,168,${alpha})`;
       ctx.lineWidth = Math.min(2, Math.max(1, linePx * 0.3));
       ctx.beginPath();
       for (let k = -K; k <= K; k++) {
-        const f = k * prf;
+        const f = k * prf + fd; // lines ride along with the Doppler-shifted carrier
+        if (Math.abs(f) > span / 2) continue;
         const x = Math.round(offToX(f)) + 0.5;
         const i = Math.min(cols - 1, Math.max(0, Math.round(x - plot.x)));
         const top = dbToY(envDb(f));
@@ -198,10 +210,21 @@ export class SpectrumView {
 
     ctx.textAlign = 'left';
     ctx.fillText(
-      `null–null 2/τ ${fmtOffset(2 / tau)} · 3 dB ${fmtOffset(0.886 / tau)} · PRF lines ${fmtOffset(prf)}${resolved ? '' : ' (unresolved)'}`,
+      `2/τ ${fmtOffset(2 / tau)} · 3 dB ${fmtOffset(0.886 / tau)} · PRF ${fmtOffset(prf)}${resolved ? '' : ' (unresolved)'}`,
       plot.x - PAD.left + 6, ly + 13,
     );
+    ctx.fillText(
+      moving
+        ? `Doppler ${fmtSigned(layout.dopplerHz)} · path loss ${gainDb.toFixed(1)} dB vs closest approach`
+        : 'sensor fixed · no Doppler · 0 dB path loss',
+      plot.x - PAD.left + 6, ly + 25,
+    );
   }
+}
+
+function fmtSigned(hz) {
+  const sign = hz > 0 ? '+' : hz < 0 ? '−' : '';
+  return `${sign}${fmtFrequencyHz(Math.abs(hz))}`;
 }
 
 /** Format a frequency offset given in MHz with an auto unit. */

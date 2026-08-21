@@ -4,6 +4,9 @@
  * Specs with `scale: 'log'` get a logarithmic slider: the <input> runs
  * 0..SLIDER_STEPS and is mapped to the spec's [min, max] exponentially, so a
  * 1 µs – 10 ms range is equally easy to drive at both ends.
+ *
+ * Specs carry an optional `group` ('waveform' by default); each group is
+ * rendered into its own container so the panel can be sectioned.
  */
 import {
   PARAM_SPECS, fmtSig, fmtFrequencyHz, fmtTimeUs, fmtDistanceM,
@@ -22,14 +25,15 @@ function fromSlider(spec, pos) {
 }
 
 /**
- * @param {HTMLElement} container element to fill with sliders
+ * @param {Record<string, HTMLElement>} containers group name → element to fill with sliders
  * @param {HTMLElement} readoutEl <dl> element for derived values
  * @param {import('./params.js').Params} params
  */
-export function buildControls(container, readoutEl, params) {
+export function buildControls(containers, readoutEl, params) {
   const inputs = {};
 
   for (const [key, spec] of Object.entries(PARAM_SPECS)) {
+    const container = containers[spec.group ?? 'waveform'] ?? containers.waveform;
     const wrap = document.createElement('div');
     wrap.className = 'control';
 
@@ -93,4 +97,31 @@ export function buildControls(container, readoutEl, params) {
 
   params.subscribe(sync);
   sync();
+}
+
+/**
+ * Readouts that change every frame (live range, Doppler …) rather than only
+ * when a slider moves. Returns an `update(values)` function taking one string
+ * per row; DOM writes are skipped when the text has not changed.
+ * @param {HTMLElement} dl
+ * @param {string[]} labels
+ */
+export function buildLiveReadouts(dl, labels) {
+  const cells = labels.map((label) => {
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.textContent = '—';
+    dl.append(dt, dd);
+    return dd;
+  });
+  const last = labels.map(() => '—');
+  return function update(values) {
+    values.forEach((v, i) => {
+      if (v !== last[i]) {
+        cells[i].textContent = v;
+        last[i] = v;
+      }
+    });
+  };
 }

@@ -1,13 +1,17 @@
 /**
  * Entry point: wires Params → Simulation → active Renderer, and runs the
- * requestAnimationFrame loop.
+ * requestAnimationFrame loop. Also owns the side effects that hang off the
+ * loop: sensor motion, the hit ping, the spectrum panel and live readouts.
  */
-import { Params, PARAM_SPECS } from './params.js';
+import {
+  Params, PARAM_SPECS, C_M_PER_US, fmtSig, fmtFrequencyHz,
+} from './params.js';
 import { Simulation } from './simulation.js';
 import { computeLayout } from './scene.js';
-import { buildControls } from './controls.js';
+import { buildControls, buildLiveReadouts } from './controls.js';
 import { Pinger } from './audio.js';
 import { SpectrumView } from './spectrum.js';
+import { SensorMotion } from './sensorMotion.js';
 import * as waveRenderer from './renderers/wave.js';
 import * as ringRenderer from './renderers/ring.js';
 
@@ -18,15 +22,23 @@ const ctx = canvas.getContext('2d');
 
 const params = new Params();
 const sim = new Simulation(params);
+const motion = new SensorMotion(params);
 let renderer = RENDERERS.wave;
 let canvasW = 1;
 let canvasH = 1;
 let layout = computeLayout(canvasW, canvasH, params.rangeUs);
 
 buildControls(
-  document.getElementById('controls'),
+  {
+    waveform: document.getElementById('controls'),
+    sensor: document.getElementById('sensor-controls'),
+  },
   document.getElementById('readouts'),
   params,
+);
+const updateLive = buildLiveReadouts(
+  document.getElementById('live-readouts'),
+  ['Live range', 'Radial velocity', 'Doppler shift', 'Path loss'],
 );
 const spectrum = new SpectrumView(document.getElementById('spectrum'));
 
@@ -43,14 +55,28 @@ for (const radio of document.querySelectorAll('input[name="style"]')) {
   radio.addEventListener('change', () => setStyle(radio.value));
 }
 
-// URL params: ?style=wave|ring selects the renderer, ?t=<µs> fast-forwards the
-// simulation on load, and any PARAM_SPECS key (e.g. ?pri=5&pulseWidth=1)
-// presets a slider — handy for sharing a scenario, screenshots and debugging.
+// ---- Sensor motion ----------------------------------------------------------
+
+const orbitToggle = document.getElementById('orbit-toggle');
+function setOrbit(on) {
+  motion.enabled = on;
+  orbitToggle.checked = on;
+}
+orbitToggle.addEventListener('change', () => setOrbit(orbitToggle.checked));
+
+// ---- URL params ---------------------------------------------------------------
+// ?style=wave|ring selects the renderer, ?orbit=1 starts with a moving sensor,
+// ?t=<µs> fast-forwards the simulation on load, and any PARAM_SPECS key
+// (e.g. ?pri=5&pulseWidth=1) presets a slider — for sharing a scenario,
+// screenshots and debugging.
+
 const urlParams = new URLSearchParams(location.search);
 for (const key of Object.keys(PARAM_SPECS)) {
   if (urlParams.has(key)) params.set(key, Number(urlParams.get(key)));
 }
 setStyle(urlParams.get('style') || 'wave');
+setOrbit(['1', 'true', 'on'].includes(urlParams.get('orbit') ?? ''));
+if (urlParams.has('angle')) motion.angle = (Number(urlParams.get('angle')) * Math.PI) / 180; // orbit start, degrees
 const fastForwardUs = Number(urlParams.get('t'));
 if (fastForwardUs > 0) sim.step(fastForwardUs / params.get('timeScale'));
 
@@ -87,6 +113,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === '2') setStyle('ring');
   else if (e.key === 'r' || e.key === 'R') sim.reset();
   else if (e.key === 'm' || e.key === 'M') setSound(!pinger.enabled);
+  else if (e.key === 'o' || e.key === 'O') setOrbit(!motion.enabled);
 });
 
 // ---- Canvas sizing ----------------------------------------------------------
@@ -106,6 +133,20 @@ resize();
 
 // ---- Main loop --------------------------------------------------------------
 
+function liveReadoutValues() {
+  const rangeKm = (layout.rangeUs * C_M_PER_US) / 1000;
+  if (!layout.orbit) return [`${fmtSig(rangeKm)} km`, '—', '—', '—'];
+  const vr = layout.radialVelocity;
+  const tag = vr > 1 ? ' closing' : vr < -1 ? ' opening' : '';
+  const sign = (x) => (x > 0 ? '+' : x < 0 ? '−' : '');
+  return [
+    `${fmtSig(rangeKm)} km`,
+    `${sign(vr)}${fmtSig(Math.abs(vr))} m/s${tag}`,
+    `${sign(layout.dopplerHz)}${fmtFrequencyHz(Math.abs(layout.dopplerHz))}`,
+    `${layout.pathGainDb.toFixed(1)} dB`,
+  ];
+}
+
 let last = performance.now();
 function frame(now) {
   // Clamp dt so a backgrounded tab does not fast-forward on return.
@@ -113,13 +154,23 @@ function frame(now) {
   last = now;
 
   sim.step(dt);
-  // Layout depends on the range slider, so recompute each frame (cheap).
-  layout = computeLayout(canvasW, canvasH, params.rangeUs);
+  motion.update(sim.running ? dt : 0);
+  // Layout depends on the range slider and sensor motion, so recompute each frame (cheap).
+  layout = motion.apply(computeLayout(canvasW, canvasH, params.rangeUs));
+
   // Hits are registered inside render() (via sim.sensorIntensity); ping on any new ones.
   const hitsBefore = sim.hitCount;
   renderer.render(ctx, layout, sim);
-  if (sim.hitCount > hitsBefore) pinger.play(sim.lastHitFrequency);
-  spectrum.draw(params, sim);
+  if (sim.hitCount > hitsBefore) {
+    // Quieter with path loss (amplitude ∝ 1/R), pitch bent by closing/opening
+    // speed as an exaggerated Doppler cue (±4 semitones at full radial speed).
+    const amplitude = Math.sqrt(layout.pathGain);
+    const bend = layout.orbit ? 4 * (layout.radialVelocity / params.get('platformSpeed')) : 0;
+    pinger.play(sim.lastHitFrequency, { gain: 0.3 + 0.7 * amplitude, bendSemitones: bend });
+  }
+
+  spectrum.draw(params, sim, layout);
+  updateLive(liveReadoutValues());
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

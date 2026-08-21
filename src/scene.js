@@ -23,7 +23,8 @@ export function computeLayout(width, height, rangeUs) {
     emitter,
     sensor,
     distancePx,
-    rangeUs,
+    rangeUs,          // live emitter→sensor range (SensorMotion may overwrite)
+    nominalRangeUs: rangeUs, // the slider value; use for anything that must not breathe with motion
     pxPerUs: distancePx / rangeUs,
     main: { x: 0, y: 0, w: width, h: mainHeight },
     strip: { x: 0, y: mainHeight, w: width, h: STRIP_HEIGHT },

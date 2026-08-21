@@ -74,11 +74,19 @@ export function drawEmitter(ctx, layout, sim) {
     ctx.fill();
   }
 
-  // Antenna: a concave dish opening toward the sensor (+x), a feed at the
-  // focus, and a short mast.
+  // Antenna: a short mast, then a concave dish (with feed at the focus)
+  // rotated to point at the sensor, so it tracks a moving one.
   ctx.strokeStyle = COLORS.emitter;
   ctx.fillStyle = COLORS.emitter;
   ctx.lineCap = 'round';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-4, 2);
+  ctx.lineTo(-4, 22);
+  ctx.stroke();
+
+  const { sensor } = layout;
+  ctx.rotate(Math.atan2(sensor.y - emitter.y, sensor.x - emitter.x));
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.arc(12, 0, 16, Math.PI * 0.68, Math.PI * 1.32);
@@ -87,8 +95,6 @@ export function drawEmitter(ctx, layout, sim) {
   ctx.beginPath();
   ctx.moveTo(-4, 0);
   ctx.lineTo(4, 0);
-  ctx.moveTo(-4, 2);
-  ctx.lineTo(-4, 22);
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(4, 0, 3.5, 0, Math.PI * 2);
@@ -103,11 +109,13 @@ export function drawSensor(ctx, layout, intensity) {
   ctx.save();
   ctx.translate(sensor.x, sensor.y);
 
-  // Glow scales with illumination intensity.
-  if (intensity > 0.01) {
+  // Glow scales with illumination intensity, dimmed by path loss (1/R²)
+  // when the sensor is moving; floor keeps distant hits visible.
+  const glow = intensity * (0.35 + 0.65 * (layout.pathGain ?? 1));
+  if (glow > 0.01) {
     const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, 40);
-    grad.addColorStop(0, `rgba(255,255,255,${0.7 * intensity})`);
-    grad.addColorStop(0.4, `rgba(62,230,168,${0.45 * intensity})`);
+    grad.addColorStop(0, `rgba(255,255,255,${0.7 * glow})`);
+    grad.addColorStop(0.4, `rgba(62,230,168,${0.45 * glow})`);
     grad.addColorStop(1, 'rgba(62,230,168,0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -127,6 +135,45 @@ export function drawSensor(ctx, layout, intensity) {
 
   ctx.restore();
   label(ctx, 'SENSOR', sensor.x, sensor.y + 34, COLORS.sensor);
+}
+
+/**
+ * Orbit path and velocity vector for a moving sensor (no-op when fixed).
+ * Draw before the pulses so it sits underneath them.
+ */
+export function drawOrbitPath(ctx, layout) {
+  const { orbit, sensor } = layout;
+  if (!orbit) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(127,145,163,0.35)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 7]);
+  ctx.beginPath();
+  ctx.arc(orbit.cx, orbit.cy, orbit.r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Velocity arrow along the tangent; colour hints closing (green) / opening (amber).
+  const closing = layout.radialVelocity > 0;
+  const len = 30;
+  const tx = orbit.tangent.x;
+  const ty = orbit.tangent.y;
+  const hx = sensor.x + tx * len;
+  const hy = sensor.y + ty * len;
+  ctx.strokeStyle = closing ? 'rgba(62,230,168,0.8)' : 'rgba(255,180,84,0.8)';
+  ctx.fillStyle = ctx.strokeStyle;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sensor.x + tx * 14, sensor.y + ty * 14);
+  ctx.lineTo(hx, hy);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(hx + tx * 7, hy + ty * 7);
+  ctx.lineTo(hx - ty * 4, hy + tx * 4);
+  ctx.lineTo(hx + ty * 4, hy - tx * 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 /**

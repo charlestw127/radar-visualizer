@@ -53,6 +53,26 @@ export const PARAM_SPECS = {
     scale: 'log',
     format: (v) => `${fmtTimeUs(v)} / s`,
   },
+
+  // ---- Sensor motion (see sensorMotion.js) ----
+  platformSpeed: {
+    group: 'sensor',
+    label: 'Platform speed',
+    min: 10,        // m/s
+    max: 3000,
+    default: 300,
+    scale: 'log',
+    format: (v) => `${fmtSig(v)} m/s`,
+  },
+  orbitPeriod: {
+    group: 'sensor',
+    label: 'Orbit period (wall-clock)',
+    min: 5,         // s
+    max: 300,
+    default: 30,
+    scale: 'log',
+    format: (v) => `${fmtSig(v)} s`,
+  },
 };
 
 /** Pulse width may not exceed this fraction of the PRI (keeps duty cycle < 100%). */

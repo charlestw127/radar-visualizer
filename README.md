@@ -37,7 +37,7 @@ A few combinations worth trying:
 - **High-PRF pulse-Doppler** – 10 GHz, PRI 5 µs, PW 1 µs, 10 km, playback 10 µs/s — watch several pulses stack up in flight at once.
 - **Real time** – push playback to 1 s/s with any waveform. A pulse crosses 50 km in 167 µs, a hundredth of a frame, so the picture degenerates into a strobe — which is the honest answer to "what does this actually look like". The hit glow, ping and strip still make the PRF legible.
 
-URL parameters: `?style=wave|ring` picks the initial style; `?t=250` fast-forwards the simulation 250 µs on load; and any slider can be preset by name in its base unit (MHz, µs, km, µs/s) — e.g. `?frequency=35000&pri=5&pulseWidth=1.5&rangeKm=10&timeScale=10` — so a scenario can be shared as a link.
+URL parameters: `?style=wave|ring` picks the initial style; `?orbit=1` starts with the sensor moving; `?t=250` fast-forwards the simulation 250 µs on load; and any slider can be preset by name in its base unit (MHz, µs, km, µs/s) — e.g. `?frequency=35000&pri=5&pulseWidth=1.5&rangeKm=10&timeScale=10` — so a scenario can be shared as a link.
 
 ### Animation styles
 
@@ -47,6 +47,18 @@ URL parameters: `?style=wave|ring` picks the initial style; `?t=250` fast-forwar
 Both styles share the same simulation, so switching styles mid-flight keeps every pulse where it was.
 
 A strip along the bottom plots the transmitted pulse train against time (right edge = now), which makes PRI, pulse width and duty cycle easy to read.
+
+### Moving sensor
+
+Tick **Orbit the sensor** (or press `O`, or add `?orbit=1`) and the sensor flies a circle that is off-centre from the emitter, so its range sweeps between about 0.28× and 0.96× the range slider. In ring style it simply flies through the expanding wavefronts; in wave style the beam tracks it like a tracking radar, and the emitter dish turns to follow. A dashed circle shows the path and an arrow shows the velocity — green while closing, amber while opening.
+
+What changes as it moves:
+
+- **Live readouts** – range, radial velocity, one-way Doppler shift (f<sub>d</sub> = v<sub>r</sub>/λ) and path loss (1/R², relative to closest approach).
+- **Spectrum** – the envelope shifts by the Doppler and sinks with path loss. Against a short pulse's bandwidth the Doppler is tiny; push the carrier up (Ka band) or the pulse width up (long pulses → narrow spectrum) to see it move. That's the honest picture: single-pulse spectra don't show Doppler, which is why pulse-Doppler radars process many pulses coherently.
+- **Sensor glow** dims with range; **pings** get quieter with range and bend in pitch — up while closing, down while opening. The pitch bend is exaggerated (real Doppler is parts-per-million) but direction-correct.
+
+Two sliders: **Platform speed** (10 – 3000 m/s) sets the magnitude of the radial velocity, and **Orbit period** sets how fast the animation goes round, in wall-clock seconds. Those are deliberately decoupled: a 300 m/s platform would not visibly move in ×10 000 slow motion, so the orbit is a stylised animation (frozen while paused), while Doppler and path loss use the slider speed with the orbit's true geometry — closing on one half, opening on the other, zero at closest and furthest approach.
 
 ### Spectrum
 
@@ -72,6 +84,7 @@ The *timing* is physically exact: time is in microseconds, distance in *light-mi
 | Carrier wavelength | 3 m at 100 MHz → 7.5 mm at 40 GHz | Cycle spacing is a log mapping of frequency: 48 px at 100 MHz down to 5 px at 40 GHz (`carrierSpacingPx`). Higher frequency still reads as "tighter cycles". |
 | Pulse length | 15 m for a 50 ns pulse | Drawn at true length (pulse width × c) but never shorter/thinner than 10 px (`MIN_PULSE_PX`) so it remains visible. At 300 km range the true length of anything under ~4 µs is below that floor. |
 | Hit / flash effects | a few µs | Timed in simulated µs, but held for at least ~0.1–0.35 s of wall-clock time so they stay perceptible at fast playback. |
+| Sensor orbit | a 300 m/s platform moves 3 cm per simulated 100 µs | Orbit angle advances in wall-clock time (Orbit period slider). Doppler and path loss use the Platform speed slider with the orbit's true radial-direction factor. Ping pitch bend is exaggerated to ±4 semitones. |
 
 The readouts always show the true physical values, so the panel is the reference if the picture is ambiguous.
 
@@ -87,7 +100,8 @@ src/
   scene.js            Canvas layout: emitter/sensor positions, px ↔ light-µs mapping
   controls.js         Builds the slider panel from PARAM_SPECS, syncs with Params
   audio.js            Web Audio "ping" synth, rate-limited, pitch tracks carrier band
-  spectrum.js         Analytic sinc² / PRF-line spectrum panel
+  spectrum.js         Analytic sinc² / PRF-line spectrum panel (Doppler-shifted, path-loss scaled)
+  sensorMotion.js     Orbiting-sensor model: position, radial velocity, Doppler, path loss
   renderers/
     common.js         Shared drawing: grid, emitter, sensor glow, hit burst, TX strip
     wave.js           Style 1 – sine bursts along the beam line

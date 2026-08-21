@@ -44,8 +44,11 @@ export class Pinger {
    * Play one ping. Pitch follows the carrier frequency of the pulse that hit
    * (low band → low note), so different emitters sound different.
    * @param {number} carrierMHz
+   * @param {{gain?: number, bendSemitones?: number}} [opts]
+   *   gain: 0..1 loudness multiplier (path loss); bendSemitones: pitch offset,
+   *   used as an exaggerated, direction-correct Doppler cue (+ closing).
    */
-  play(carrierMHz) {
+  play(carrierMHz, { gain: gainMul = 1, bendSemitones = 0 } = {}) {
     if (!this.enabled || !this.ready) return;
     const now = performance.now();
     if (now - this._lastPlay < MIN_INTERVAL_MS) return;
@@ -53,12 +56,13 @@ export class Pinger {
 
     const ctx = this.ctx;
     const t0 = ctx.currentTime;
-    const pitch = pitchFor(carrierMHz);
+    const pitch = pitchFor(carrierMHz) * Math.pow(2, bendSemitones / 12);
+    const peak = Math.max(0.0002, this.volume * gainMul);
 
     // Master envelope: ~5 ms attack, exponential decay over ~0.4 s.
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(this.volume, t0 + 0.005);
+    gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
     gain.connect(ctx.destination);
 

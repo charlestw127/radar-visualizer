@@ -29,6 +29,14 @@
       <h2>Waveform</h2>
       <div id="controls"></div>
 
+      <h2>Sensor</h2>
+      <label class="toggle" title="O">
+        <input type="checkbox" id="orbit-toggle" />
+        <span>Orbit the sensor</span>
+      </label>
+      <div id="sensor-controls"></div>
+      <dl id="live-readouts" class="readouts"></dl>
+
       <h2>Derived</h2>
       <dl id="readouts" class="readouts"></dl>
 
@@ -36,7 +44,7 @@
       <canvas id="spectrum" class="spectrum" aria-label="Power spectrum of the current waveform"></canvas>
 
       <p class="hint">
-        Keys: <kbd>Space</kbd> pause · <kbd>1</kbd>/<kbd>2</kbd> switch style · <kbd>R</kbd> reset · <kbd>M</kbd> mute
+        Keys: <kbd>Space</kbd> pause · <kbd>1</kbd>/<kbd>2</kbd> switch style · <kbd>O</kbd> orbit · <kbd>R</kbd> reset · <kbd>M</kbd> mute
       </p>
     </aside>
   </main>

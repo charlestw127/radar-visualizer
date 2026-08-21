@@ -9,8 +9,8 @@
  * annulus sweeps over the sensor, the sensor lights up and a hit burst plays.
  */
 import {
-  clear, drawGrid, drawEmitter, drawSensor, drawHitEffect, drawPulseTrainStrip,
-  carrierSpacingPx, MIN_PULSE_PX,
+  clear, drawGrid, drawOrbitPath, drawEmitter, drawSensor, drawHitEffect,
+  drawPulseTrainStrip, carrierSpacingPx, MIN_PULSE_PX,
 } from './common.js';
 
 const MAX_STRIPES = 80;
@@ -18,6 +18,7 @@ const MAX_STRIPES = 80;
 export function render(ctx, layout, sim) {
   clear(ctx, layout);
   drawGrid(ctx, layout);
+  drawOrbitPath(ctx, layout);
 
   const { emitter, main, pxPerUs, rangeUs } = layout;
 
@@ -45,7 +46,7 @@ export function render(ctx, layout, sim) {
 }
 
 function drawRing(ctx, layout, sim, pulse) {
-  const { emitter, pxPerUs, rangeUs } = layout;
+  const { emitter, pxPerUs, nominalRangeUs: rangeUs } = layout;
   const leadUs = sim.leadingEdge(pulse);
   const trailUs = sim.trailingEdge(pulse);
   const rOuter = leadUs * pxPerUs;
