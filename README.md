@@ -1,6 +1,8 @@
 # Radar Emission Visualizer
 
-A small, dependency-free browser app that animates radar pulses travelling from an **emitter** to a **sensor**. Sliders control the carrier frequency, pulse repetition interval (PRI), pulse width and playback speed; two animation styles show the same pulse train in different ways.
+**▶ Try it out here: <https://charlestw127.github.io/radar-visualizer/>**
+
+A small, dependency-free browser app that animates radar pulses travelling from an **emitter** to a **sensor**. Sliders control the carrier frequency, pulse repetition interval (PRI), pulse width and playback speed; two animation styles show the same pulse train in different ways. Click anywhere once to enable the hit pings.
 
 ## Running
 
@@ -13,6 +15,8 @@ python -m http.server 5173
 ```
 
 Then open <http://localhost:5173>.
+
+The hosted copy at <https://charlestw127.github.io/radar-visualizer/> redeploys on every push to `main`. GitHub Pages caches files for 10 minutes, so right after an update a browser can pair a fresh `index.html` with stale modules (new controls that do nothing) — hard-refresh (Ctrl+Shift+R / Cmd+Shift+R) if something looks off.
 
 ## Controls
 
