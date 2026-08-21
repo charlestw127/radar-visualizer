@@ -10,13 +10,13 @@ export const MIN_PULSE_PX = 10;
 
 /**
  * On-screen spacing between carrier cycles, in px, as a function of carrier
- * frequency in MHz. Real wavelengths (3 m at 100 MHz, 3 cm at 10 GHz) are far
- * below a pixel at tens of km per canvas, so this is a stylised log mapping:
- * higher frequency → visibly tighter cycles, never sub-pixel.
+ * frequency in MHz. Real wavelengths (3 m at 100 MHz, 7.5 mm at 40 GHz) are
+ * far below a pixel at tens of km per canvas, so this is a stylised log
+ * mapping: higher frequency → visibly tighter cycles, never sub-pixel.
  */
 export function carrierSpacingPx(freqMHz) {
-  const F_LO = 100, F_HI = 10000;   // MHz
-  const PX_LO = 48, PX_HI = 6;      // px
+  const F_LO = 100, F_HI = 40000;   // MHz
+  const PX_LO = 48, PX_HI = 5;      // px
   const t = Math.log(freqMHz / F_LO) / Math.log(F_HI / F_LO);
   const clamped = Math.min(1, Math.max(0, t));
   return PX_LO * Math.pow(PX_HI / PX_LO, clamped);

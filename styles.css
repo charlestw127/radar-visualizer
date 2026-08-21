@@ -144,6 +144,14 @@ button:hover { border-color: var(--accent); }
   text-align: right;
 }
 
+.spectrum {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+}
+
 .hint {
   margin-top: 1.5rem;
   font-size: 0.75rem;

@@ -20,23 +20,24 @@ All sliders are logarithmic, covering the spans an EW/ESM receiver actually sees
 
 | Control | Range | What it does |
 |---|---|---|
-| Carrier frequency | 100 MHz – 10 GHz (VHF → X band) | Density of the sine cycles / ring stripes inside each pulse |
+| Carrier frequency | 100 MHz – 40 GHz (VHF → Ka band) | Density of the sine cycles / ring stripes inside each pulse |
 | PRI | 1 µs – 10 ms (PRF 1 MHz → 100 Hz) | Time between successive pulses |
 | Pulse width | 50 ns – 1 ms | Duration of each pulse → its physical length in flight |
 | Emitter–sensor range | 1 – 300 km | Distance the pulse has to cover |
-| Playback speed | 1 – 10 000 µs/s | Simulated microseconds per real second (×10⁶ … ×100 slow-motion) |
+| Playback speed | 1 µs/s – 1 s/s | Simulated time per real second, from ×1 000 000 slow-motion up to real time |
 
 Pulse width is automatically capped at 90 % of the PRI so the duty cycle stays below 100 %.
 
-Derived readouts update live: PRF, duty cycle, IEEE band letter, wavelength, pulse length, unambiguous range, range transit time, slow-motion factor. Keyboard: `Space` pause, `1` / `2` switch style, `R` reset.
+Derived readouts update live: PRF, duty cycle, IEEE band letter, wavelength, pulse length, unambiguous range, range transit time, slow-motion factor. Keyboard: `Space` pause, `1` / `2` switch style, `R` reset, `M` mute.
 
 A few combinations worth trying:
 
 - **Long-range search radar** – 1.3 GHz (L), PRI 3 ms, PW 100 µs, 250 km, playback 1000 µs/s.
 - **Fire-control / tracking** – 9.5 GHz (X), PRI 100 µs, PW 0.5 µs, 20 km, playback 50 µs/s.
 - **High-PRF pulse-Doppler** – 10 GHz, PRI 5 µs, PW 1 µs, 10 km, playback 10 µs/s — watch several pulses stack up in flight at once.
+- **Real time** – push playback to 1 s/s with any waveform. A pulse crosses 50 km in 167 µs, a hundredth of a frame, so the picture degenerates into a strobe — which is the honest answer to "what does this actually look like". The hit glow, ping and strip still make the PRF legible.
 
-URL parameters: `?style=wave|ring` picks the initial style; `?t=250` fast-forwards the simulation 250 µs on load (useful for screenshots).
+URL parameters: `?style=wave|ring` picks the initial style; `?t=250` fast-forwards the simulation 250 µs on load; and any slider can be preset by name in its base unit (MHz, µs, km, µs/s) — e.g. `?frequency=35000&pri=5&pulseWidth=1.5&rangeKm=10&timeScale=10` — so a scenario can be shared as a link.
 
 ### Animation styles
 
@@ -47,13 +48,28 @@ Both styles share the same simulation, so switching styles mid-flight keeps ever
 
 A strip along the bottom plots the transmitted pulse train against time (right edge = now), which makes PRI, pulse width and duty cycle easy to read.
 
+### Spectrum
+
+Below the readouts is the power spectrum of the current waveform, as a spectrum analyser at the sensor would show it:
+
+- A rectangular pulse of width τ has a **sinc² envelope** with nulls every 1/τ either side of the carrier; the panel spans ±4/τ so you see the main lobe and three sidelobes each way. Shorten the pulse and the spectrum spreads; lengthen it and it narrows.
+- A coherent pulse train is a **line spectrum** — discrete lines at PRF spacing under that envelope. When the lines are closer than a few pixels at the current span (low duty cycle) they merge into a filled envelope and the caption says *unresolved*, which is exactly what a real analyser does when its resolution bandwidth exceeds the PRF. Push duty cycle up (long pulse, short PRI) to see the lines separate.
+- The caption gives null-to-null width 2/τ, the ≈0.886/τ 3 dB bandwidth, and the PRF line spacing.
+- The trace brightens while the sensor is being illuminated. The noise floor is cosmetic.
+
+The spectrum is computed analytically from the live slider values (it's a property of what the emitter is transmitting now), not by FFT-ing the animation.
+
+### Sound
+
+Each sensor hit plays a short sonar-style ping, synthesised with the Web Audio API (no audio files). The pitch follows the carrier band — VHF pings low, Ka band pings high. Browsers only allow audio after you've interacted with the page, so the first click or keypress unlocks it. Pings are rate-limited to ~14 per second so high-PRF settings don't turn into a buzz. Toggle with the **Sound** button or `M`.
+
 ## What is to scale and what is not
 
 The *timing* is physically exact: time is in microseconds, distance in *light-microseconds* (1 light-µs ≈ 300 m) so propagation speed is exactly 1 unit/µs, and pulse position, pulse length, PRI spacing, transit time and every readout follow from that. Three things are deliberately stylised because real values are sub-pixel at tens of km per canvas:
 
 | Quantity | Real value | On screen |
 |---|---|---|
-| Carrier wavelength | 3 m at 100 MHz → 3 cm at 10 GHz | Cycle spacing is a log mapping of frequency: 48 px at 100 MHz down to 6 px at 10 GHz (`carrierSpacingPx`). Higher frequency still reads as "tighter cycles". |
+| Carrier wavelength | 3 m at 100 MHz → 7.5 mm at 40 GHz | Cycle spacing is a log mapping of frequency: 48 px at 100 MHz down to 5 px at 40 GHz (`carrierSpacingPx`). Higher frequency still reads as "tighter cycles". |
 | Pulse length | 15 m for a 50 ns pulse | Drawn at true length (pulse width × c) but never shorter/thinner than 10 px (`MIN_PULSE_PX`) so it remains visible. At 300 km range the true length of anything under ~4 µs is below that floor. |
 | Hit / flash effects | a few µs | Timed in simulated µs, but held for at least ~0.1–0.35 s of wall-clock time so they stay perceptible at fast playback. |
 
@@ -70,6 +86,8 @@ src/
   simulation.js       Pulse-train state machine: emits/prunes pulses, hit detection
   scene.js            Canvas layout: emitter/sensor positions, px ↔ light-µs mapping
   controls.js         Builds the slider panel from PARAM_SPECS, syncs with Params
+  audio.js            Web Audio "ping" synth, rate-limited, pitch tracks carrier band
+  spectrum.js         Analytic sinc² / PRF-line spectrum panel
   renderers/
     common.js         Shared drawing: grid, emitter, sensor glow, hit burst, TX strip
     wave.js           Style 1 – sine bursts along the beam line

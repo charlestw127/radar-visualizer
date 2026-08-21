@@ -2,10 +2,12 @@
  * Entry point: wires Params → Simulation → active Renderer, and runs the
  * requestAnimationFrame loop.
  */
-import { Params } from './params.js';
+import { Params, PARAM_SPECS } from './params.js';
 import { Simulation } from './simulation.js';
 import { computeLayout } from './scene.js';
 import { buildControls } from './controls.js';
+import { Pinger } from './audio.js';
+import { SpectrumView } from './spectrum.js';
 import * as waveRenderer from './renderers/wave.js';
 import * as ringRenderer from './renderers/ring.js';
 
@@ -26,6 +28,7 @@ buildControls(
   document.getElementById('readouts'),
   params,
 );
+const spectrum = new SpectrumView(document.getElementById('spectrum'));
 
 // ---- Style switching ------------------------------------------------------
 
@@ -41,8 +44,12 @@ for (const radio of document.querySelectorAll('input[name="style"]')) {
 }
 
 // URL params: ?style=wave|ring selects the renderer, ?t=<µs> fast-forwards the
-// simulation on load (handy for screenshots and debugging).
+// simulation on load, and any PARAM_SPECS key (e.g. ?pri=5&pulseWidth=1)
+// presets a slider — handy for sharing a scenario, screenshots and debugging.
 const urlParams = new URLSearchParams(location.search);
+for (const key of Object.keys(PARAM_SPECS)) {
+  if (urlParams.has(key)) params.set(key, Number(urlParams.get(key)));
+}
 setStyle(urlParams.get('style') || 'wave');
 const fastForwardUs = Number(urlParams.get('t'));
 if (fastForwardUs > 0) sim.step(fastForwardUs / params.get('timeScale'));
@@ -57,12 +64,29 @@ function togglePause() {
 pauseBtn.addEventListener('click', togglePause);
 document.getElementById('btn-reset').addEventListener('click', () => sim.reset());
 
+// ---- Sound --------------------------------------------------------------------
+
+const pinger = new Pinger();
+const soundBtn = document.getElementById('btn-sound');
+function setSound(on) {
+  pinger.enabled = on;
+  soundBtn.textContent = on ? 'Sound on' : 'Muted';
+  soundBtn.setAttribute('aria-pressed', String(on));
+}
+soundBtn.addEventListener('click', () => setSound(!pinger.enabled));
+
+// Browsers only allow audio after a user gesture; unlock on the first one.
+const unlockAudio = () => pinger.unlock();
+window.addEventListener('pointerdown', unlockAudio, { passive: true });
+window.addEventListener('keydown', unlockAudio);
+
 document.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   else if (e.key === '1') setStyle('wave');
   else if (e.key === '2') setStyle('ring');
   else if (e.key === 'r' || e.key === 'R') sim.reset();
+  else if (e.key === 'm' || e.key === 'M') setSound(!pinger.enabled);
 });
 
 // ---- Canvas sizing ----------------------------------------------------------
@@ -91,7 +115,11 @@ function frame(now) {
   sim.step(dt);
   // Layout depends on the range slider, so recompute each frame (cheap).
   layout = computeLayout(canvasW, canvasH, params.rangeUs);
+  // Hits are registered inside render() (via sim.sensorIntensity); ping on any new ones.
+  const hitsBefore = sim.hitCount;
   renderer.render(ctx, layout, sim);
+  if (sim.hitCount > hitsBefore) pinger.play(sim.lastHitFrequency);
+  spectrum.draw(params, sim);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

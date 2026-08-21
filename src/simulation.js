@@ -39,6 +39,12 @@ export class Simulation {
     this.nextEmit = 0;
     this.hitCount = 0;
     this.lastHitTime = -Infinity;
+    /** Carrier (MHz) of the most recent pulse to hit; drives the ping pitch. */
+    this.lastHitFrequency = 0;
+    /** Sensor illumination 0..1 from the last sensorIntensity() call. */
+    this.lastIntensity = 0;
+    /** Sensor distance (light-µs) from the last sensorIntensity() call. */
+    this.sensorDistance = null;
   }
 
   /** Advance the simulation by dtSeconds of wall-clock time. */
@@ -47,10 +53,29 @@ export class Simulation {
     const dt = dtSeconds * this.params.get('timeScale');
     this.time += dt;
 
-    // Emit any pulses that are due. Guard against runaway loops if PRI is tiny
-    // relative to the step.
+    // At fast playback one frame can span thousands of PRIs. Pulses emitted
+    // early enough in the frame would already be beyond maxRange (and so past
+    // the sensor), so skip straight over them: count their hits, keep a few
+    // PRIs of history for the strip, and only allocate pulses that could
+    // still be visible.
+    const pri = this.params.get('pri');
+    const pw = this.params.get('pulseWidth');
+    const keepUs = Math.max(this.maxRange + pw, pri * 10);
+    if (this.nextEmit < this.time - keepUs) {
+      const skipped = Math.floor((this.time - keepUs - this.nextEmit) / pri);
+      if (skipped > 0) {
+        this.nextEmit += skipped * pri;
+        this.lastEmit = this.nextEmit - pri;
+        this.hitCount += skipped;
+        this.lastHitTime = this.time;
+        this.lastHitFrequency = this.params.get('frequency');
+      }
+    }
+
+    // Emit any pulses that are due. The guard bounds work per frame; anything
+    // left over is picked up next frame.
     let guard = 0;
-    while (this.nextEmit <= this.time && guard++ < 1000) {
+    while (this.nextEmit <= this.time && guard++ < MAX_PULSES) {
       const pulse = {
         tEmit: this.nextEmit,
         pulseWidth: this.params.get('pulseWidth'),
@@ -60,18 +85,24 @@ export class Simulation {
       this.pulses.push(pulse);
       this.history.push({ tEmit: pulse.tEmit, pulseWidth: pulse.pulseWidth });
       this.lastEmit = this.nextEmit;
-      this.nextEmit += this.params.get('pri');
+      this.nextEmit += pri;
     }
 
     // Drop pulses whose trailing edge has left the visible range, and
     // history older than the strip could ever show (it shows a few PRIs).
-    this.pulses = this.pulses.filter(
-      (p) => this.trailingEdge(p) <= this.maxRange,
-    );
+    // A pulse culled before sensorIntensity() got to it (possible when one
+    // frame spans the whole range) still passed the sensor: count the hit.
+    this.pulses = this.pulses.filter((p) => {
+      if (this.trailingEdge(p) <= this.maxRange) return true;
+      if (!p.hit && this.sensorDistance !== null && this.leadingEdge(p) >= this.sensorDistance) {
+        this._registerHit(p);
+      }
+      return false;
+    });
     if (this.pulses.length > MAX_PULSES) {
       this.pulses = this.pulses.slice(-MAX_PULSES);
     }
-    const historyUs = this.params.get('pri') * 10;
+    const historyUs = pri * 10;
     this.history = this.history.filter(
       (h) => this.time - h.tEmit < historyUs,
     );
@@ -116,17 +147,14 @@ export class Simulation {
    * Also registers hit events (leading edge crossing the sensor).
    */
   sensorIntensity(distance) {
+    this.sensorDistance = distance;
     let best = 0;
     const decayUs = this.hitDecayUs;
     for (const p of this.pulses) {
       const lead = this.leadingEdge(p);
       const trail = this.trailingEdge(p);
 
-      if (lead >= distance && !p.hit) {
-        p.hit = true;
-        this.hitCount += 1;
-        this.lastHitTime = this.time;
-      }
+      if (lead >= distance && !p.hit) this._registerHit(p);
 
       let intensity = 0;
       if (lead >= distance && trail <= distance) {
@@ -136,7 +164,15 @@ export class Simulation {
       }
       if (intensity > best) best = intensity;
     }
+    this.lastIntensity = best;
     return best;
+  }
+
+  _registerHit(p) {
+    p.hit = true;
+    this.hitCount += 1;
+    this.lastHitTime = this.time;
+    this.lastHitFrequency = p.frequency;
   }
 
   /** After a PRI change, re-time the next emission from the last one. */

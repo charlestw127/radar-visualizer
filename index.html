@@ -16,6 +16,7 @@
     <div class="actions">
       <button id="btn-pause" type="button" title="Space">Pause</button>
       <button id="btn-reset" type="button" title="R">Reset</button>
+      <button id="btn-sound" type="button" title="M" aria-pressed="true">Sound on</button>
     </div>
   </header>
 
@@ -31,8 +32,11 @@
       <h2>Derived</h2>
       <dl id="readouts" class="readouts"></dl>
 
+      <h2>Spectrum</h2>
+      <canvas id="spectrum" class="spectrum" aria-label="Power spectrum of the current waveform"></canvas>
+
       <p class="hint">
-        Keys: <kbd>Space</kbd> pause · <kbd>1</kbd>/<kbd>2</kbd> switch style · <kbd>R</kbd> reset
+        Keys: <kbd>Space</kbd> pause · <kbd>1</kbd>/<kbd>2</kbd> switch style · <kbd>R</kbd> reset · <kbd>M</kbd> mute
       </p>
     </aside>
   </main>

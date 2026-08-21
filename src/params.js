@@ -6,7 +6,7 @@
  * light travels in 1 µs ≈ 299.8 m), so propagation speed c == 1 unit/µs.
  *
  * Ranges are chosen to cover what an EW/ESM receiver realistically sees:
- * VHF through X band, PRFs from ~100 Hz to 1 MHz, pulse widths from tens of
+ * VHF through Ka band, PRFs from ~100 Hz to 1 MHz, pulse widths from tens of
  * nanoseconds to a millisecond.
  */
 
@@ -16,7 +16,7 @@ export const PARAM_SPECS = {
   frequency: {
     label: 'Carrier frequency',
     min: 100,       // MHz
-    max: 10000,     // 10 GHz
+    max: 40000,     // 40 GHz (top of Ka band)
     default: 3000,
     scale: 'log',
     format: fmtFrequencyMHz,
@@ -47,11 +47,11 @@ export const PARAM_SPECS = {
   },
   timeScale: {
     label: 'Playback speed',
-    min: 1,         // µs of sim time per real second
-    max: 10000,
+    min: 1,         // µs of sim time per real second (×1 000 000 slow-motion)
+    max: 1e6,       // 1 s of sim time per real second = real time
     default: 100,
     scale: 'log',
-    format: (v) => `${fmtSig(v)} µs / s`,
+    format: (v) => `${fmtTimeUs(v)} / s`,
   },
 };
 
@@ -155,12 +155,14 @@ export function fmtFrequencyMHz(mhz) {
 }
 
 export function fmtFrequencyHz(hz) {
+  if (hz >= 1e9) return `${fmtSig(hz / 1e9)} GHz`;
   if (hz >= 1e6) return `${fmtSig(hz / 1e6)} MHz`;
   if (hz >= 1e3) return `${fmtSig(hz / 1e3)} kHz`;
   return `${fmtSig(hz)} Hz`;
 }
 
 export function fmtTimeUs(us) {
+  if (us >= 1e6) return `${fmtSig(us / 1e6)} s`;
   if (us >= 1000) return `${fmtSig(us / 1000)} ms`;
   if (us < 1) return `${fmtSig(us * 1000)} ns`;
   return `${fmtSig(us)} µs`;
@@ -168,6 +170,7 @@ export function fmtTimeUs(us) {
 
 export function fmtDistanceM(m) {
   if (m >= 1000) return `${fmtSig(m / 1000)} km`;
+  if (m < 0.01) return `${fmtSig(m * 1000)} mm`;
   if (m < 1) return `${fmtSig(m * 100)} cm`;
   return `${fmtSig(m)} m`;
 }
@@ -182,5 +185,7 @@ export function bandFor(mhz) {
   if (mhz < 8000) return 'C';
   if (mhz < 12000) return 'X';
   if (mhz < 18000) return 'Ku';
-  return 'K';
+  if (mhz < 27000) return 'K';
+  if (mhz < 40000) return 'Ka';
+  return 'V';
 }
