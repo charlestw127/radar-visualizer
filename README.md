@@ -114,6 +114,16 @@ The target is a **frictionless sphere**: constant RCS from every aspect, which i
 
 A hidden platform (random class: bird / missile / fighter / bomber / airliner — 40 dB of RCS spread) wanders the arena. Steer the beam with the mouse (slew-limited, like a real antenna), adjust beamwidth with the scroll wheel — wide to search, narrow to refine. Blips build tracks; the RCS estimate firms up with hits (±2 dB/√n); track speed is a second identification cue (a 900 m/s "bird" isn't a bird). Once a track forms, **click it to designate it** — single-target track, like a real radar: the beam auto-follows the track's *estimated* position (LOCK brackets on the PPI), freeing your hands for the waveform sliders. The lock breaks if the track dies — including when your own waveform change stops seeing the target (blind range, too little energy). Click empty sky or `Esc` to go back to manual steer. Call the class from the buttons — wrong calls are free but counted, a correct call reveals the truth and your time.
 
+#### Why your bomber reads as a bird
+
+The RCS estimate is not a measurement of your radar settings — it solves the radar equation *backwards*, per plot: measured SNR minus the SNR a 1 m² target would have produced **at the measured range** with that plot's exact waveform. Every plot snapshots the pulse width, band, integration count, beam-shape loss and jamming level that produced it, and the inversion subtracts them all back out — so the waveform sliders cancel, and a 30 m² bomber reads ≈30 m² on any waveform that can see it at all.
+
+The loophole is in the bolded words: the inversion trusts the range the radar *believes*. Put the target beyond the unambiguous range c·PRI/2 and its echo folds to a false near range (the amber `2nd?` tags). The estimator then reasons "that little SNR, from something this *close*? must be tiny" — and the estimate collapses by 40·log₁₀ of the fold ratio. A 30 m² bomber at 60 km on a short PRI can read as a 0.015 m² bird. The bias only ever runs **low** (a folded range is always nearer than the truth), so a too-big estimate is never ambiguity.
+
+Try it: in hunt, track something around 60–80 km, then drag PRI down to ~300 µs (unambiguous range 45 km). Watch the `2nd?` blips appear at a false near range and the RCS estimate crash by orders of magnitude; restore the PRI and a fresh track reads true again. This is precisely why real radars stagger their PRFs — the true range only reveals itself when the folds disagree.
+
+(Other things that legitimately move the readout: a new round or a fresh track restarts the running average; few hits mean a loose ±2 dB/√n estimate; and in radar mode the Target RCS slider *is* the truth being estimated.)
+
 ### Battle — electronic combat
 
 Four platforms (2 fighters, a bomber, a missile) spawn on the western edge; get one inside the **goal ring** around the radar. The radar scans automatically, and a platform continuously **tracked for 8 s is intercepted**. Your EW kit, per platform:
