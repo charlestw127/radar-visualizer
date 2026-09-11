@@ -63,7 +63,7 @@ export function buildControls(containers, readoutEl, params) {
 
     wrap.append(labelRow, input);
     container.append(wrap);
-    inputs[key] = { input, value, spec };
+    inputs[key] = { input, value, spec, nameEl: name };
   }
 
   const readouts = [
@@ -97,6 +97,15 @@ export function buildControls(containers, readoutEl, params) {
 
   params.subscribe(sync);
   sync();
+
+  return {
+    /** Swap slider labels for the given mode (specs may carry `modeLabels`). */
+    refreshLabels(modeId) {
+      for (const { spec, nameEl } of Object.values(inputs)) {
+        nameEl.textContent = spec.modeLabels?.[modeId] ?? spec.label;
+      }
+    },
+  };
 }
 
 /**

@@ -144,6 +144,60 @@ button:hover { border-color: var(--accent); }
   text-align: right;
 }
 
+/* Mode-specific panel sections: main.js toggles .active on mode switch. */
+.mode-section { display: none; }
+.mode-section.active { display: block; }
+.mode-section h2 { margin-top: 1.5rem; }
+
+/* The wave/ring style switch only applies to beam mode. */
+body:not([data-mode="beam"]) .style-only { display: none; }
+
+.game-status {
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+  color: var(--text);
+  min-height: 2.2em;
+}
+
+.identify {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+.identify button { font-size: 0.78rem; padding: 0.35rem 0.4rem; }
+button.wide { width: 100%; margin-top: 0.5rem; }
+
+#platform-list { margin: 0.5rem 0; }
+.platform-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.platform-row.selected { border-color: var(--accent); }
+.platform-row .p-name { flex: 1; }
+.platform-row .p-status {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+}
+.platform-row .p-status[data-s="PAINTED"] { color: var(--accent-2); }
+.platform-row .p-status[data-s="DETECTED"] { color: var(--accent-2); }
+.platform-row .p-status[data-s="TRACKED"] { color: var(--danger); }
+.platform-row .p-status[data-s="INTERCEPTED"] { color: var(--muted); text-decoration: line-through; }
+.platform-row .p-ea { min-width: 4.2rem; font-size: 0.72rem; padding: 0.2rem 0.4rem; }
+.platform-row .p-ea[aria-pressed="true"] { border-color: var(--danger); color: var(--danger); }
+
 .toggle {
   display: flex;
   align-items: center;

@@ -39,6 +39,7 @@ export const PARAM_SPECS = {
   },
   rangeKm: {
     label: 'Emitter–sensor range',
+    modeLabels: { radar: 'Target range', hunt: 'Arena radius', battle: 'Arena radius' },
     min: 1,
     max: 300,
     default: 50,
@@ -72,6 +73,35 @@ export const PARAM_SPECS = {
     default: 30,
     scale: 'log',
     format: (v) => `${fmtSig(v)} s`,
+  },
+
+  // ---- Radar / hunt / battle modes (see radar.js, modes.js) ----
+  beamwidthDeg: {
+    group: 'radar',
+    label: 'Beamwidth',
+    min: 2,
+    max: 20,
+    step: 0.5,
+    default: 6,
+    format: (v) => `${fmtSig(v)}°`,
+  },
+  targetRcs: {
+    group: 'radartarget',
+    label: 'Target RCS (sphere)',
+    min: 0.01,
+    max: 100,
+    default: 1,
+    scale: 'log',
+    format: (v) => `${fmtSig(v, 2)} m²`,
+  },
+  jamErp: {
+    group: 'ecm',
+    label: 'Jammer power (ERP)',
+    min: 10,
+    max: 50,
+    step: 1,
+    default: 30,
+    format: (v) => `${fmtSig(v)} dB`,
   },
 };
 

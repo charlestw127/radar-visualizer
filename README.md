@@ -2,7 +2,16 @@
 
 **▶ Try it out here: <https://charlestw127.github.io/radar-visualizer/>**
 
-A small, dependency-free browser app that animates radar pulses travelling from an **emitter** to a **sensor**. Sliders control the carrier frequency, pulse repetition interval (PRI), pulse width and playback speed; two animation styles show the same pulse train in different ways. Click anywhere once to enable the hit pings.
+A small, dependency-free browser app about radar and EW, in four modes:
+
+- **Beam** — the original visualization: pulses travelling from an emitter to a sensor, as sine bursts or expanding rings, with an optional orbiting sensor (Doppler, path loss).
+- **Radar** — a monostatic radar: the dish is both emitter and sensor, pulses bounce off a frictionless sphere and you watch the echo come home to a blip on an A-scope.
+- **Hunt** — a game: find, track and identify a hidden aircraft with a steerable beam, plot-to-track association and RCS estimation.
+- **Battle** — a game: fly up to four platforms past an automatic search radar using ES (radar warning) and EA (noise jamming, burn-through).
+
+Sliders control the carrier frequency, pulse repetition interval (PRI), pulse width and playback speed everywhere — detection ranges, blind ranges and ambiguities all respond to them. Click anywhere once to enable the sounds.
+
+![Battle mode: platform #2 jamming — the radar sees only a bearing strobe, and the A-scope floor is up 22 dB](docs/battle.png)
 
 ## Running
 
@@ -32,7 +41,7 @@ All sliders are logarithmic, covering the spans an EW/ESM receiver actually sees
 
 Pulse width is automatically capped at 90 % of the PRI so the duty cycle stays below 100 %.
 
-Derived readouts update live: PRF, duty cycle, IEEE band letter, wavelength, pulse length, unambiguous range, range transit time, slow-motion factor. Keyboard: `Space` pause, `1` / `2` switch style, `R` reset, `M` mute.
+Derived readouts update live: PRF, duty cycle, IEEE band letter, wavelength, pulse length, unambiguous range, range transit time, slow-motion factor. Keyboard: `Space` pause, `1`–`5` modes (1/2 are the beam styles, 3 radar, 4 hunt, 5 battle), `O` orbit, `G` new round, `E` jam (battle), `R` reset, `M` mute.
 
 A few combinations worth trying:
 
@@ -41,7 +50,7 @@ A few combinations worth trying:
 - **High-PRF pulse-Doppler** – 10 GHz, PRI 5 µs, PW 1 µs, 10 km, playback 10 µs/s — watch several pulses stack up in flight at once.
 - **Real time** – push playback to 1 s/s with any waveform. A pulse crosses 50 km in 167 µs, a hundredth of a frame, so the picture degenerates into a strobe — which is the honest answer to "what does this actually look like". The hit glow, ping and strip still make the PRF legible.
 
-URL parameters: `?style=wave|ring` picks the initial style; `?orbit=1` starts with the sensor moving; `?t=250` fast-forwards the simulation 250 µs on load; and any slider can be preset by name in its base unit (MHz, µs, km, µs/s) — e.g. `?frequency=35000&pri=5&pulseWidth=1.5&rangeKm=10&timeScale=10` — so a scenario can be shared as a link.
+URL parameters: `?mode=radar|hunt|battle` picks the mode; `?style=wave|ring` the beam style; `?orbit=1` starts with the sensor moving; `?t=250` fast-forwards the simulation 250 µs on load; and any slider can be preset by name in its base unit (MHz, µs, km, µs/s) — e.g. `?frequency=35000&pri=5&pulseWidth=1.5&rangeKm=10&timeScale=10` — so a scenario can be shared as a link.
 
 ### Animation styles
 
@@ -49,6 +58,8 @@ URL parameters: `?style=wave|ring` picks the initial style; `?orbit=1` starts wi
 - **Ring pulses** – each pulse is an expanding annulus centred on the emitter. Outer radius = leading edge, inner radius = trailing edge, so ring thickness is the pulse width. Concentric stripes mark the wavelength. When the ring sweeps across the sensor it lights up and a hit burst plays.
 
 Both styles share the same simulation, so switching styles mid-flight keeps every pulse where it was.
+
+![Beam mode: sine bursts travelling from emitter to sensor](docs/beam.png)
 
 A strip along the bottom plots the transmitted pulse train against time (right edge = now), which makes PRI, pulse width and duty cycle easy to read.
 
@@ -79,6 +90,39 @@ The spectrum is computed analytically from the live slider values (it's a proper
 
 Each sensor hit plays a short sonar-style ping, synthesised with the Web Audio API (no audio files). The pitch follows the carrier band — VHF pings low, Ka band pings high. Browsers only allow audio after you've interacted with the page, so the first click or keypress unlocks it. Pings are rate-limited to ~14 per second so high-PRF settings don't turn into a buzz. Toggle with the **Sound** button or `M`.
 
+## Radar, hunt and battle modes
+
+The three radar modes share one measurement engine ([src/rf.js](src/rf.js), [src/radar.js](src/radar.js)): a game-calibrated radar equation in dB with named constants,
+
+```
+SNR = K0 + 10·log10(σ) + 10·log10(τ) + 20·log10(f_ref/f) − 40·log10(R) + beam shape + 10·log10(N) − max(0, J/N)
+```
+
+so every headline slider genuinely moves detection: bigger RCS σ, longer pulse τ (more energy — but a longer blind range cτ/2), lower band (the VHF early-warning story), more integrated pulses N per dwell. Detections are drawn from a probability curve around a 13 dB threshold, so edge-of-detection targets flicker. Measured range and azimuth carry SNR-dependent errors (beam-splitting, range resolution), ranges beyond c·PRI/2 fold to a false near range (flagged `2nd?`), and echoes inside the transmit pulse are eclipsed. Plots feed an alpha-beta tracker with M-of-N confirmation; each plot also inverts the equation into a running RCS estimate with a confidence interval.
+
+The bottom strip becomes an **A-scope**: amplitude vs apparent range across exactly one PRI of round trip, with the noise floor, the detection threshold, the blind-range block and (in battle) the jamming-raised floor.
+
+### Radar — the bounce demo
+
+![Radar mode: the dish stares at an orbiting sphere; the A-scope blip lands when the amber echo ring comes home](docs/radar.png)
+
+The target is a **frictionless sphere**: constant RCS from every aspect, which is exactly why radar engineers calibrate with spheres. Set its RCS (the label shows the equivalent diameter, σ = πr²), its range, and optionally let it orbit — the readouts then show **two-way** Doppler (2v·f/c, double beam mode's one-way shift). Playback is preset slow enough to watch a ring reach the sphere and an echo ring return; the A-scope blip appears at the instant the animated echo lands, and `measured range` vs `true range` shows the measurement noise. Each animated ring stands in for the whole dwell's pulse burst, so detection still integrates the true-timeline pulse count.
+
+### Hunt — find, track, identify
+
+![Hunt mode: locked on track T1 — the beam follows the track while the RCS estimate converges](docs/hunt.png)
+
+A hidden platform (random class: bird / missile / fighter / bomber / airliner — 40 dB of RCS spread) wanders the arena. Steer the beam with the mouse (slew-limited, like a real antenna), adjust beamwidth with the scroll wheel — wide to search, narrow to refine. Blips build tracks; the RCS estimate firms up with hits (±2 dB/√n); track speed is a second identification cue (a 900 m/s "bird" isn't a bird). Once a track forms, **click it to designate it** — single-target track, like a real radar: the beam auto-follows the track's *estimated* position (LOCK brackets on the PPI), freeing your hands for the waveform sliders. The lock breaks if the track dies — including when your own waveform change stops seeing the target (blind range, too little energy). Click empty sky or `Esc` to go back to manual steer. Call the class from the buttons — wrong calls are free but counted, a correct call reveals the truth and your time.
+
+### Battle — electronic combat
+
+Four platforms (2 fighters, a bomber, a missile) spawn on the western edge; get one inside the **goal ring** around the radar. The radar scans automatically, and a platform continuously **tracked for 8 s is intercepted**. Your EW kit, per platform:
+
+- **ES / RWR** (always on): the amber arc + chirp when the beam sweeps you is truth — you know you're painted even when the radar failed to detect you.
+- **EA** (toggle): noise jamming toward the radar. The radar's floor rises (watch the A-scope), your blips vanish, and the radar sees only a bearing **strobe** — direction without range. But the echo grows as 1/R⁴ against the jammer's 1/R²: inside the **burn-through ring** (drawn dashed red, and shown in the panel) the radar sees through your jamming. Jamming also tells everyone where you are — the strobe is a giant arrow.
+
+Click a platform (or `Tab`) to select, click the map to set course, `E` to jam, `G` to restart. Statuses climb HIDDEN → PAINTED → DETECTED → TRACKED → INTERCEPTED.
+
 ## What is to scale and what is not
 
 The *timing* is physically exact: time is in microseconds, distance in *light-microseconds* (1 light-µs ≈ 300 m) so propagation speed is exactly 1 unit/µs, and pulse position, pulse length, PRI spacing, transit time and every readout follow from that. Three things are deliberately stylised because real values are sub-pixel at tens of km per canvas:
@@ -89,27 +133,41 @@ The *timing* is physically exact: time is in microseconds, distance in *light-mi
 | Pulse length | 15 m for a 50 ns pulse | Drawn at true length (pulse width × c) but never shorter/thinner than 10 px (`MIN_PULSE_PX`) so it remains visible. At 300 km range the true length of anything under ~4 µs is below that floor. |
 | Hit / flash effects | a few µs | Timed in simulated µs, but held for at least ~0.1–0.35 s of wall-clock time so they stay perceptible at fast playback. |
 | Sensor orbit | a 300 m/s platform moves 3 cm per simulated 100 µs | Orbit angle advances in wall-clock time (Orbit period slider). Doppler and path loss use the Platform speed slider with the orbit's true radial-direction factor. Ping pitch bend is exaggerated to ±4 semitones. |
+| Arena timeline (radar/hunt/battle) | a fighter needs ~6 min to cross 100 km | Platform motion, antenna rotation, dwells and the tracker all run in **game seconds** — true seconds played at **5× wall-clock** (`GAME_TIMELAPSE`). One time base, so every displayed speed/Doppler is true m/s with no conversions. Frozen while paused. |
+| Pulses per dwell | ~560 pulses cross a 6° beam at 36°/s and 500 Hz PRF | Detection integrates the TRUE-timeline pulse count N (capped at 64), even when slow playback shows only one animated pulse. In the radar demo, each animated ring stands in for the whole dwell's burst. |
+| Echo geometry | a target moves during the echo's flight | The echo ring (and the measured range) uses the target position at the moment of illumination — a snapshot, exact for the slow-motion animation. |
+| Detection itself | radar detection is statistical | Deliberately kept: Pd is a logistic curve around SNR = 13 dB, so marginal targets flicker scan to scan — that part is realism, not stylisation. |
 
 The readouts always show the true physical values, so the panel is the reference if the picture is ambiguous.
 
 ## Architecture
 
 ```
-index.html            Page shell: canvas + control panel
-styles.css            Dark theme, layout
+index.html            Page shell: canvas + control panel + mode sections
+styles.css            Dark theme, layout, per-mode panel visibility
+check.mjs             Node validation of the DOM-free core (run: node check.mjs)
 src/
-  main.js             Entry point. Wires everything, runs the rAF loop
+  main.js             Entry point. Wires modes, runs the rAF loop, input, audio
   params.js           Parameter model (PARAM_SPECS, Params class, derived values)
   simulation.js       Pulse-train state machine: emits/prunes pulses, hit detection
-  scene.js            Canvas layout: emitter/sensor positions, px ↔ light-µs mapping
+  scene.js            Layouts: emitter-left (beam/radar) and radar-centred (PPI)
   controls.js         Builds the slider panel from PARAM_SPECS, syncs with Params
   audio.js            Web Audio "ping" synth, rate-limited, pitch tracks carrier band
   spectrum.js         Analytic sinc² / PRF-line spectrum panel (Doppler-shifted, path-loss scaled)
   sensorMotion.js     Orbiting-sensor model: position, radial velocity, Doppler, path loss
+  rf.js               DOM-free radar-equation engine: SNR budget, Pd, jamming, burn-through
+  world.js            Arena kinematics in game seconds; Platform classes, GAME_TIMELAPSE
+  radar.js            RadarModel: antenna/dwells, analytic detection, paint-delay queue,
+                      alpha-beta tracker (M-of-N), RCS estimation, RWR bookkeeping
+  games.js            Hunt and Battle state machines (status ladder, intercepts, win/lose)
+  modes.js            Mode registry: presets, param memory, mode contexts, cosmetic EchoField
   renderers/
-    common.js         Shared drawing: grid, emitter, sensor glow, hit burst, TX strip
-    wave.js           Style 1 – sine bursts along the beam line
-    ring.js           Style 2 – expanding annuli with wavelength stripes
+    common.js         Shared drawing: grid, emitter/dish, sensor glow, hit burst, TX strip
+    wave.js           Beam style 1 – sine bursts along the beam line
+    ring.js           Beam style 2 – expanding annuli with wavelength stripes
+    monostatic.js     Radar mode: bounce scene, TX + echo rings, sphere target
+    ppi.js            Hunt/battle: phosphor PPI, beam wedge, tracks, strobes, platforms
+    scope.js          A-scope strip (apparent range, threshold, blind range, jam floor)
 ```
 
 ### Data flow

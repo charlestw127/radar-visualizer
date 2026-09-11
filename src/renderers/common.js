@@ -54,7 +54,7 @@ export function drawGrid(ctx, layout) {
   ctx.stroke();
 }
 
-export function drawEmitter(ctx, layout, sim) {
+export function drawEmitter(ctx, layout, sim, labelText = 'EMITTER') {
   const { emitter } = layout;
   // Brief flash while a pulse is leaving the antenna (held for at least a
   // few frames so nanosecond pulses still register).
@@ -101,7 +101,7 @@ export function drawEmitter(ctx, layout, sim) {
   ctx.fill();
 
   ctx.restore();
-  label(ctx, 'EMITTER', emitter.x, emitter.y + 34, COLORS.emitter);
+  label(ctx, labelText, emitter.x, emitter.y + 34, COLORS.emitter);
 }
 
 export function drawSensor(ctx, layout, intensity) {
@@ -277,7 +277,7 @@ export function drawPulseTrainStrip(ctx, layout, sim) {
   ctx.restore();
 }
 
-function label(ctx, text, x, y, color) {
+export function label(ctx, text, x, y, color) {
   ctx.save();
   ctx.fillStyle = color;
   ctx.font = '600 11px system-ui, sans-serif';

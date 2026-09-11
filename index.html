@@ -6,10 +6,16 @@
   <title>Radar Emission Visualizer</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body data-mode="beam">
   <header class="topbar">
     <h1>Radar Emission Visualizer</h1>
-    <div class="style-switch" role="radiogroup" aria-label="Animation style">
+    <div class="style-switch" role="radiogroup" aria-label="Mode">
+      <label><input type="radio" name="mode" value="beam" checked /> <span>Beam</span></label>
+      <label><input type="radio" name="mode" value="radar" /> <span>Radar</span></label>
+      <label><input type="radio" name="mode" value="hunt" /> <span>Hunt</span></label>
+      <label><input type="radio" name="mode" value="battle" /> <span>Battle</span></label>
+    </div>
+    <div class="style-switch style-only" role="radiogroup" aria-label="Animation style">
       <label><input type="radio" name="style" value="wave" checked /> <span>Sine wave</span></label>
       <label><input type="radio" name="style" value="ring" /> <span>Ring pulses</span></label>
     </div>
@@ -29,13 +35,47 @@
       <h2>Waveform</h2>
       <div id="controls"></div>
 
-      <h2>Sensor</h2>
-      <label class="toggle" title="O">
-        <input type="checkbox" id="orbit-toggle" />
-        <span>Orbit the sensor</span>
-      </label>
-      <div id="sensor-controls"></div>
-      <dl id="live-readouts" class="readouts"></dl>
+      <div class="mode-section" data-modes="beam">
+        <h2>Sensor</h2>
+        <label class="toggle" title="O">
+          <input type="checkbox" id="orbit-toggle" />
+          <span>Orbit the sensor</span>
+        </label>
+        <div id="sensor-controls"></div>
+        <dl id="live-readouts" class="readouts"></dl>
+      </div>
+
+      <div class="mode-section" data-modes="radar hunt battle">
+        <h2>Radar</h2>
+        <div id="radar-controls"></div>
+      </div>
+
+      <div class="mode-section" data-modes="radar">
+        <h2>Target — frictionless sphere</h2>
+        <div id="radartarget-controls"></div>
+        <label class="toggle" title="O">
+          <input type="checkbox" id="target-orbit-toggle" />
+          <span>Target orbits</span>
+        </label>
+        <dl id="radar-live" class="readouts"></dl>
+      </div>
+
+      <div class="mode-section" data-modes="hunt">
+        <h2>Hunt</h2>
+        <p class="game-status" id="hunt-status">Find, track and identify the hidden target.</p>
+        <dl id="hunt-live" class="readouts"></dl>
+        <div class="identify" id="identify-buttons"></div>
+        <button id="btn-new-hunt" type="button" class="wide">New target (G)</button>
+      </div>
+
+      <div class="mode-section" data-modes="battle">
+        <h2>Electronic combat</h2>
+        <div id="ecm-controls"></div>
+        <div id="platform-list"></div>
+        <dl id="battle-live" class="readouts"></dl>
+        <p class="hint">Click a platform to select · click the map to set course · <kbd>E</kbd> jam on/off · <kbd>Tab</kbd> next platform</p>
+        <button id="btn-restart-battle" type="button" class="wide">Restart (G)</button>
+      </div>
 
       <h2>Derived</h2>
       <dl id="readouts" class="readouts"></dl>
@@ -44,7 +84,7 @@
       <canvas id="spectrum" class="spectrum" aria-label="Power spectrum of the current waveform"></canvas>
 
       <p class="hint">
-        Keys: <kbd>Space</kbd> pause · <kbd>1</kbd>/<kbd>2</kbd> switch style · <kbd>O</kbd> orbit · <kbd>R</kbd> reset · <kbd>M</kbd> mute
+        Keys: <kbd>Space</kbd> pause · <kbd>1</kbd>–<kbd>5</kbd> modes (1/2 beam styles) · <kbd>O</kbd> orbit · <kbd>G</kbd> new round · <kbd>R</kbd> reset · <kbd>M</kbd> mute
       </p>
     </aside>
   </main>
